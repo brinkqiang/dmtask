@@ -86,7 +86,7 @@ int main() {
             std::cout << "Thread " << std::this_thread::get_id() << ": (Scenario 3) .then() after void_future." << std::endl;
             return 123; 
         })
-        ->then([](int value) {
+        ->then([](double value) {
             std::cout << "Thread " << std::this_thread::get_id() << ": (Scenario 3) .then() received " << value << " from void chain." << std::endl;
             return "Final: " + std::to_string(value);
         });
