@@ -26,6 +26,5 @@ dmtask
 ```cpp
 ```
 ## Contacts
-[![Join the chat](https://badges.gitter.im/brinkqiang/dmtask/Lobby.svg)](https://gitter.im/brinkqiang/dmtask)
 
 ## Thanks
