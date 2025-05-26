@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.21)
+
+PROJECT(dmtask)
+
+LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+INCLUDE(cmake/ModuleImport.cmake)
+INCLUDE(cmake/ModuleCompileOptions.cmake)
+ModuleSetCompileOptions()
+
+SET(DMTASK_VERSION_MAJOR "1")
+SET(DMTASK_VERSION_MINOR "0")
+SET(DMTASK_VERSION_PATCH "1")
+SET(DMTASK_VERSION "${DMTASK_VERSION_MAJOR}.${DMTASK_VERSION_MINOR}.${DMTASK_VERSION_PATCH}")
+
+MESSAGE(STATUS "VERSION: ${DMTASK_VERSION}")
+
+OPTION(USE_DMTASK "use dmtask" OFF)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/dmtask_config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/dmtask_config.h)
+
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set(CMAKE_STATIC_LIBRARY_PREFIX "")
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
+
+ModuleImportAll("thirdparty")
+
+LibImport("libdmtask" "src/libdmtask")
+
+if(PROJECT_IS_TOP_LEVEL)
+    ExeImport("test" "libdmtask;dmtest")
+endif()
+
+AddInstall("libdmtask" "${CMAKE_CURRENT_SOURCE_DIR}/include")
