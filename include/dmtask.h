@@ -19,21 +19,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef __DMTASK_H_INCLUDE__
-#define __DMTASK_H_INCLUDE__
+#ifndef IDMTASK_H
+#define IDMTASK_H
 
-#include "dmos.h"
+#include <memory> // Required for std::unique_ptr in some contexts, good to have
 
-class Idmtask
-{
+template<typename T>
+class IDmTask {
 public:
-    virtual ~Idmtask(){}
-    virtual void DMAPI Release(void) = 0;
-	
-    virtual void DMAPI Test(void) = 0;
+    virtual ~IDmTask() = default;
+    virtual T get() = 0;
+    // Other common non-type-changing virtual methods like is_ready() could go here.
 };
 
-extern "C" DMEXPORT_DLL Idmtask* DMAPI dmtaskGetModule();
-
-typedef Idmtask* (DMAPI* PFN_dmtaskGetModule)();
-#endif // __DMTASK_H_INCLUDE__
+#endif // IDMTASK_H

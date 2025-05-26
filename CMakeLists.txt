@@ -23,10 +23,6 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 
 ModuleImportAll("thirdparty")
 
-LibImport("libdmtask" "src/libdmtask")
-
 if(PROJECT_IS_TOP_LEVEL)
-    ExeImport("test" "libdmtask;dmtest")
+    ExeImport("test" "dmtest")
 endif()
-
-AddInstall("libdmtask" "${CMAKE_CURRENT_SOURCE_DIR}/include")
