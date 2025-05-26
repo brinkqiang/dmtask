@@ -19,10 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef DMTASK_IMPL_H
-#define DMTASK_IMPL_H
+#ifndef __LIBDMTASK_H__
+#define __LIBDMTASK_H__
 
-#include "dmtask.h"
 #include <future>
 #include <functional>
 #include <thread>
@@ -30,6 +29,14 @@
 #include <stdexcept>
 #include <utility> // For std::forward, std::move, std::decay_t
 #include <memory>  // For std::unique_ptr
+
+template<typename T>
+class IDmTask {
+public:
+    virtual ~IDmTask() = default;
+    virtual T get() = 0;
+    // Other common non-type-changing virtual methods like is_ready() could go here.
+};
 
 // Helper to deduce result type of a callable
 template<typename Func, typename... Args>
@@ -72,6 +79,6 @@ public:
 };
 
 // Include the template implementations file
-#include "libdmtask_impl.tpp"
+#include "libdmtask.tpp"
 
-#endif // DMTASK_IMPL_H
+#endif // __LIBDMTASK_H__

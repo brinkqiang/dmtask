@@ -1,29 +1,6 @@
 
-// Copyright (c) 2018 brinkqiang (brink.qiang@gmail.com)
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-
-// This file (dmtask_impl.tpp) is included by dmtask_impl.h
-// It contains the definitions of template members and functions.
-
-#ifndef DMTASK_IMPL_TPP
-#define DMTASK_IMPL_TPP
+#ifndef __LIBDMTASK_TPP__
+#define __LIBDMTASK_TPP__
 
 // Definitions for DmTaskImpl<T> methods
 template<typename T>
@@ -55,7 +32,9 @@ template<typename T>
 template<typename Func>
 auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invoke_result_t<Func, T>>> {
     ensure_valid();
-    using CurrentResultType = T; // Should not be void here due to SFINAE on the other overload
+    // This 'then' overload is for when T is NOT void.
+    // The SFINAE on the other 'then' overload handles the T = void case.
+    using CurrentResultType = T; 
     using NextResultType = invoke_result_t<Func, CurrentResultType>;
 
     std::promise<NextResultType> prom;
@@ -86,7 +65,7 @@ template<typename T>
 template<typename Func, typename CurrentTaskType, std::enable_if_t<std::is_void_v<CurrentTaskType>, int>>
 auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invoke_result_t<Func>>> {
     ensure_valid();
-    using NextResultType = invoke_result_t<Func>;
+    using NextResultType = invoke_result_t<Func>; // Func takes no arguments if CurrentTaskType is void
 
     std::promise<NextResultType> prom;
     std::future<NextResultType> next_std_fut = prom.get_future();
@@ -94,12 +73,12 @@ auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invo
     std::async(std::launch::async,
         [current_std_fut_moved = std::move(std_fut), p = std::move(prom), cont = std::forward<Func>(continuation)]() mutable {
         try {
-            current_std_fut_moved.get(); 
+            current_std_fut_moved.get(); // Wait for void future, call its get()
             if constexpr (std::is_void_v<NextResultType>) {
-                cont();
+                cont(); // Call continuation that takes void
                 p.set_value();
             } else {
-                p.set_value(cont());
+                p.set_value(cont()); // Call continuation that takes void and returns a value
             }
         } catch (...) {
             try {
@@ -111,12 +90,19 @@ auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invo
     return std::make_unique<DmTaskImpl<NextResultType>>(std::move(next_std_fut));
 }
 
+// MODIFIED get() method
 template<typename T>
 T DmTaskImpl<T>::get() { // 'override' keyword is in the declaration in .h
     ensure_valid();
-    T value = std_fut.get(); 
-    valid_ = false; 
-    return value;
+    if constexpr (std::is_void_v<T>) {
+        std_fut.get(); // For std::future<void>, just call get() to wait/rethrow, it returns void
+        valid_ = false; 
+        return; // Explicitly return for void
+    } else {
+        T value = std_fut.get(); // For non-void T, get value
+        valid_ = false; 
+        return value;
+    }
 }
 
 // Factory function definition
@@ -144,4 +130,4 @@ std::unique_ptr<DmTaskImpl<T>> make_async_call(Func&& func, Args&&... args) {
     return std::make_unique<DmTaskImpl<T>>(std::move(std_fut));
 }
 
-#endif // DMTASK_IMPL_TPP
+#endif // __LIBDMTASK_TPP__
