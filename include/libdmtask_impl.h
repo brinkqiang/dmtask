@@ -22,7 +22,7 @@
 #ifndef DMTASK_IMPL_H
 #define DMTASK_IMPL_H
 
-#include "idmtask.h"
+#include "dmtask.h"
 #include <future>
 #include <functional>
 #include <thread>
@@ -72,6 +72,6 @@ public:
 };
 
 // Include the template implementations file
-#include "dmtask_impl.tpp"
+#include "libdmtask_impl.tpp"
 
 #endif // DMTASK_IMPL_H

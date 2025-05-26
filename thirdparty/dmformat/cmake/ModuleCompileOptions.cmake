@@ -47,15 +47,6 @@ macro(ModuleSetCompileOptions)
   endif()
   
   set(CMAKE_C_STANDARD 99)
-
-  set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
-  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-  
-  if(APPLE)
-    set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib")  # macOS
-  elseif(UNIX)
-    set(CMAKE_INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib")  # Linux
-  endif()
   
   if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
     set(CMAKE_BUILD_TYPE "debug")
@@ -108,11 +99,15 @@ macro(ModuleSetCompileOptions)
       add_definitions(/utf-8)
       add_compile_options(/W3 /wd4005 /wd4068 /wd4244 /wd4267 /wd4800 /wd4996)
 
+      check_cxx_compiler_flag("/std:c++20" COMPILER_SUPPORTS_CXX20)
       check_cxx_compiler_flag("/std:c++17" COMPILER_SUPPORTS_CXX17)
       check_cxx_compiler_flag("/std:c++14" COMPILER_SUPPORTS_CXX14)
       check_cxx_compiler_flag("/std:c++11" COMPILER_SUPPORTS_CXX11)
       
-      if(COMPILER_SUPPORTS_CXX17)
+      if(COMPILER_SUPPORTS_CXX20)
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
+          message(STATUS "The compiler has /std:c++20 support.")
+      elseif(COMPILER_SUPPORTS_CXX17)
           set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
           message(STATUS "The compiler has /std:c++17 support.")
       elseif(COMPILER_SUPPORTS_CXX14)
@@ -130,11 +125,15 @@ macro(ModuleSetCompileOptions)
 
     set(DMOS_NAME "mac") 
 
+    check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
     check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
     check_cxx_compiler_flag("-std=c++14" COMPILER_SUPPORTS_CXX14)
     check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 
-    if(COMPILER_SUPPORTS_CXX17)
+    if(COMPILER_SUPPORTS_CXX20)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+        message(STATUS "The compiler has -std=c++20 support.")
+    elseif(COMPILER_SUPPORTS_CXX17)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
         message(STATUS "The compiler has -std=c++17 support.")
     elseif(COMPILER_SUPPORTS_CXX14)
@@ -179,11 +178,15 @@ macro(ModuleSetCompileOptions)
 
     set(DMOS_NAME "lin")
 
+    check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
     check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
     check_cxx_compiler_flag("-std=c++14" COMPILER_SUPPORTS_CXX14)
     check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
     
-    if(COMPILER_SUPPORTS_CXX17)
+    if(COMPILER_SUPPORTS_CXX20)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+        message(STATUS "The compiler has -std=c++20 support.")
+    elseif(COMPILER_SUPPORTS_CXX17)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
         message(STATUS "The compiler has -std=c++17 support.")
     elseif(COMPILER_SUPPORTS_CXX14)
@@ -249,10 +252,9 @@ macro(ModuleSetWinCompilerFlags)
   endif (WIN32)
 endmacro()
 
-macro(AddInstall ModuleList HeadersDir)
+macro(AddInstall ModuleList)
     message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
     message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-    message(STATUS "HeadersDir: ${HeadersDir}")
     message(STATUS "Install Path: ${CMAKE_INSTALL_PREFIX}/bin")
 
     message(STATUS "AddInstall ${ModuleList} ...")
@@ -268,15 +270,6 @@ macro(AddInstall ModuleList HeadersDir)
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
     endif(WIN32)
-
-    if (EXISTS "${HeadersDir}" AND NOT "${HeadersDir}" STREQUAL "")
-        message(STATUS "Installing headers from: ${HeadersDir}")
-        install(DIRECTORY "${HeadersDir}/"
-                DESTINATION include
-                FILES_MATCHING 
-                PATTERN "*.h"
-                PATTERN "*.hpp")
-    endif()
 
     configure_file(
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
