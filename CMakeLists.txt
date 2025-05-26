@@ -25,4 +25,5 @@ ModuleImportAll("thirdparty")
 
 if(PROJECT_IS_TOP_LEVEL)
     ExeImport("test" "dmtest")
+    ExeImport("example" "")
 endif()
