@@ -1,8 +1,9 @@
-
 #ifndef __LIBDMTASK_TPP__
 #define __LIBDMTASK_TPP__
 
-// Definitions for DmTaskImpl<T> methods
+#include <tuple>
+#include <utility>
+
 template<typename T>
 void DmTaskImpl<T>::ensure_valid() const {
     if (!valid_) {
@@ -32,8 +33,6 @@ template<typename T>
 template<typename Func>
 auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std::invoke_result_t<Func, T>>> {
     ensure_valid();
-    // This 'then' overload is for when T is NOT void.
-    // The SFINAE on the other 'then' overload handles the T = void case.
     using CurrentResultType = T; 
     using NextResultType = std::invoke_result_t<Func, CurrentResultType>;
 
@@ -65,7 +64,7 @@ template<typename T>
 template<typename Func, typename CurrentTaskType, std::enable_if_t<std::is_void_v<CurrentTaskType>, int>>
 auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std::invoke_result_t<Func>>> {
     ensure_valid();
-    using NextResultType = std::invoke_result_t<Func>; // Func takes no arguments if CurrentTaskType is void
+    using NextResultType = std::invoke_result_t<Func>;
 
     std::promise<NextResultType> prom;
     std::future<NextResultType> next_std_fut = prom.get_future();
@@ -73,12 +72,12 @@ auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std:
     std::async(std::launch::async,
         [current_std_fut_moved = std::move(std_fut), p = std::move(prom), cont = std::forward<Func>(continuation)]() mutable {
         try {
-            current_std_fut_moved.get(); // Wait for void future, call its get()
+            current_std_fut_moved.get();
             if constexpr (std::is_void_v<NextResultType>) {
-                cont(); // Call continuation that takes void
+                cont();
                 p.set_value();
             } else {
-                p.set_value(cont()); // Call continuation that takes void and returns a value
+                p.set_value(cont());
             }
         } catch (...) {
             try {
@@ -90,22 +89,21 @@ auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std:
     return std::make_unique<DmTaskImpl<NextResultType>>(std::move(next_std_fut));
 }
 
-// MODIFIED get() method
 template<typename T>
-T DmTaskImpl<T>::get() { // 'override' keyword is in the declaration in .h
+T DmTaskImpl<T>::get() {
     ensure_valid();
     if constexpr (std::is_void_v<T>) {
-        std_fut.get(); // For std::future<void>, just call get() to wait/rethrow, it returns void
+        std_fut.get();
         valid_ = false; 
-        return; // Explicitly return for void
+        return;
     } else {
-        T value = std_fut.get(); // For non-void T, get value
+        T value = std_fut.get();
         valid_ = false; 
         return value;
     }
 }
 
-// Factory function definition
+#if __cplusplus >= 202002L
 template<typename T, typename Func, typename... Args>
 std::unique_ptr<DmTaskImpl<T>> make_async_call(Func&& func, Args&&... args) {
     std::promise<T> prom;
@@ -129,5 +127,36 @@ std::unique_ptr<DmTaskImpl<T>> make_async_call(Func&& func, Args&&... args) {
 
     return std::make_unique<DmTaskImpl<T>>(std::move(std_fut));
 }
+#else
+// C++17
+template<typename T, typename Func, typename... Args>
+std::unique_ptr<DmTaskImpl<T>> make_async_call(Func&& func, Args&&... args) {
+    std::promise<T> prom;
+    std::future<T> std_fut = prom.get_future();
+
+
+    auto func_copy = std::decay_t<Func>(std::forward<Func>(func));
+    auto args_tuple = std::make_tuple(std::decay_t<Args>(std::forward<Args>(args))...);
+    
+    std::async(std::launch::async,
+        [p = std::move(prom), func_copy = std::move(func_copy), args_tuple = std::move(args_tuple)]() mutable {
+            try {
+                if constexpr (std::is_void_v<T>) {
+                    std::apply(func_copy, args_tuple);
+                    p.set_value();
+                } else {
+                    p.set_value(std::apply(func_copy, args_tuple));
+                }
+            } catch (...) {
+                try {
+                    p.set_exception(std::current_exception());
+                } catch (...) { /* Should not happen */ }
+                }
+        });
+
+    return std::make_unique<DmTaskImpl<T>>(std::move(std_fut));
+}
+#endif
+
 
 #endif // __LIBDMTASK_TPP__
