@@ -30,12 +30,12 @@ DmTaskImpl<T>& DmTaskImpl<T>::operator=(DmTaskImpl&& other) noexcept {
 
 template<typename T>
 template<typename Func>
-auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invoke_result_t<Func, T>>> {
+auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std::invoke_result_t<Func, T>>> {
     ensure_valid();
     // This 'then' overload is for when T is NOT void.
     // The SFINAE on the other 'then' overload handles the T = void case.
     using CurrentResultType = T; 
-    using NextResultType = invoke_result_t<Func, CurrentResultType>;
+    using NextResultType = std::invoke_result_t<Func, CurrentResultType>;
 
     std::promise<NextResultType> prom;
     std::future<NextResultType> next_std_fut = prom.get_future();
@@ -63,9 +63,9 @@ auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invo
 
 template<typename T>
 template<typename Func, typename CurrentTaskType, std::enable_if_t<std::is_void_v<CurrentTaskType>, int>>
-auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invoke_result_t<Func>>> {
+auto DmTaskImpl<T>::then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std::invoke_result_t<Func>>> {
     ensure_valid();
-    using NextResultType = invoke_result_t<Func>; // Func takes no arguments if CurrentTaskType is void
+    using NextResultType = std::invoke_result_t<Func>; // Func takes no arguments if CurrentTaskType is void
 
     std::promise<NextResultType> prom;
     std::future<NextResultType> next_std_fut = prom.get_future();

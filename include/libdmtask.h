@@ -23,6 +23,7 @@
 #define __LIBDMTASK_H__
 
 #include <future>
+#include <type_traits>
 #include <functional>
 #include <thread>
 #include <chrono>
@@ -37,10 +38,6 @@ public:
     virtual T get() = 0;
     // Other common non-type-changing virtual methods like is_ready() could go here.
 };
-
-// Helper to deduce result type of a callable
-template<typename Func, typename... Args>
-using invoke_result_t = typename std::invoke_result<Func, Args...>::type;
 
 // Forward declaration of the concrete implementation
 template<typename T>
@@ -69,11 +66,11 @@ public:
 
     // .then for DmTaskImpl<NonVoid>
     template<typename Func>
-    auto then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invoke_result_t<Func, T>>>;
+    auto then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std::invoke_result_t<Func, T>>>;
 
     // .then for DmTaskImpl<Void>
     template<typename Func, typename CurrentTaskType = T, std::enable_if_t<std::is_void_v<CurrentTaskType>, int> = 0>
-    auto then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<invoke_result_t<Func>>>;
+    auto then(Func&& continuation) -> std::unique_ptr<DmTaskImpl<std::invoke_result_t<Func>>>;
 
     T get() override;
 };
